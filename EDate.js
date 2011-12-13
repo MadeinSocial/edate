@@ -34,7 +34,7 @@ function EDate(date, UTC_by_default) {
 	var objDate = new Date();
 	var mapper_constructor = [
 		{
-			'pattern': /^\d\d-\d\d-\d\d\d\d$/i,
+			'pattern': /^[0-2][0-9]|3[0-1]-0[1-9]|1[0-2]-\d{4}$/i,
 			'func' : function(date) {
 				var d = new EDate('',UTC_by_default);
 				d['set' + USEUTC + 'Date'](date.substring(0,2));
@@ -45,8 +45,13 @@ function EDate(date, UTC_by_default) {
 			}
 		},
 		{
-			'pattern': /^christmas$/i,
-			'func': function() {return new Date('2011-12-25');}
+			pattern: /^[0-2][0-9]|3[0-1]-0[1-9]|1[0-2]-\d{4} [0-1][0-9]|2[0-3]:[0-5][0-9]:[0-5][0-9]$/i,
+			func: function(date) {
+				var d = new EDate(date.substring(0,10), UTC_by_default);
+				console.debug(d);
+				d['set' + USEUTC + 'Hours'](date.substring(11,13),date.substring(14,16),date.substring(17,19),0);
+				return d;
+			}
 		},
 		{
 			'pattern': /yesterday/i,
