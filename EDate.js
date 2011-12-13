@@ -19,14 +19,29 @@ LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
  */
-function EDate(date) {
-	var objDate = new Date();
+function EDate(date, UTC_by_default) {
 	
-	var patt_function = [
+	/**
+	 * Constructor
+	 */
+	UTC_by_default = UTC_by_default || false;
+	
+	var USEUTC = '';
+	if (UTC_by_default) {
+		USEUTC = 'UTC';
+	}
+	
+	var objDate = new Date();
+	var mapper_constructor = [
 		{
 			'pattern': /^\d\d-\d\d-\d\d\d\d$/i,
 			'func' : function(date) {
-				return new Date(date.substring(6,10) + '-' + date.substring(3,5) + '-' + date.substring(0,2));
+				var d = new EDate('',UTC_by_default);
+				d['set' + USEUTC + 'Date'](date.substring(0,2));
+				d['set' + USEUTC + 'Month'](parseInt(date.substring(3,5)) - 1);
+				d['set' + USEUTC + 'FullYear'](date.substring(6,10));
+				d.midnight();
+				return d;
 			}
 		},
 		{
@@ -34,7 +49,7 @@ function EDate(date) {
 			'func': function() {return new Date('2011-12-25');}
 		},
 		{
-			'pattern': /^yesterday$/i,
+			'pattern': /yesterday/i,
 			'func': function(){
 				var d = new EDate();
 				d.addTime('-1 day');
@@ -42,7 +57,7 @@ function EDate(date) {
 			}
 		},
 		{
-			'pattern': /^tomorrow$/i,
+			'pattern': /tomorrow/i,
 			'func': function(){
 				var d = new EDate();
 				d.addTime('+1 day');
@@ -50,23 +65,80 @@ function EDate(date) {
 			}
 		},
 		{
-			'pattern': /^año del caldo$/i,
+			'pattern': /today/i,
 			'func': function(){
-				return new Date(-10000000000000);
+				var d = new EDate();
+				d.midnight();
+				return d;
 			}
 		},
 	];
 	
-	for(i in patt_function){
-		exp = new RegExp(patt_function[i].pattern);
+	var mapper_modifiers = [
+		{
+			pattern: /midnight/i,
+			func: function(objDate) {
+				objDate.midnight();
+				return objDate;
+			}
+		},
+		{
+			pattern: /noon/i,
+			func: function(objDate) {
+				objDate.noon();
+				return objDate;
+			}
+		},
+		{
+			pattern: / (0?[1-9]|1[0-2]) ?am/i,
+			func: function(objDate, matches) {
+				objDate['set' + USEUTC + 'Hours'](matches[1],0,0,0);
+				return objDate;
+			}
+		},
+		{
+			pattern: / (0?[1-9]|1[0-2]) ?pm/i,
+			func: function(objDate, matches) {
+				objDate.setUTCHours(12 + parseInt(matches[1]) ,0,0,0);
+				return objDate;
+			}
+		},
+		{
+			pattern: / ([0-1]?[1-9]|2[0-3]) ?hrs/i,
+			func: function(objDate, matches) {
+				objDate.setUTCHours(parseInt(matches[1]) ,0,0,0);
+				return objDate;
+			}
+		},
+	];
+	
+	for(i in mapper_constructor){
+		exp = new RegExp(mapper_constructor[i].pattern);
 		if (exp.exec(date) !== null) {
-			objDate = patt_function[i].func(date);
+			objDate = mapper_constructor[i].func(date);
+			for ( j in mapper_modifiers) {
+				exp2 = new RegExp(mapper_modifiers[j].pattern);
+				matches = exp2.exec(date);
+				if (matches !== null) {
+					objDate = mapper_modifiers[j].func(objDate,matches);
+				}
+			}
 			break;
 		}
 	}
-	
+	/*
+	 * Ends constructor
+	 */
+
 	objDate.toString = function(){
-		return objDate.toUTCString();
+		if ( ! UTC_by_default) {
+			var date = new Date();
+			date.setTime(objDate.getTime());
+			return date.toString();
+		}
+		else {
+			return objDate.toUTCString();
+		}
 	};
 	
 	objDate.addTime = function(string){
@@ -93,23 +165,24 @@ function EDate(date) {
 				this.setTime(this.getTime() + (time * 604800000));
 				break;
 			case 'month':
-				this.setMonth(this.getMonth() + (time * 1));
+				this['set' + USEUTC + 'Month'](this['get' + USEUTC + 'Month']() + (time * 1));
 				break;
 			case 'year':
-				this.setFullYear(this.getFullYear() + (time * 1));
+				this['set' + USEUTC + 'FullYear'](this['get' + USEUTC + 'FullYear']() + (time * 1));
 				break;
 		}
+		return true;
 	};
 	
 	objDate.next = function(string){
 		string = string || 'day';
-		if (this.dow[string] !== undefined) {
+		if (this.DOW[string] !== undefined) {
 			var lapse = 0;
-			if (this.dow[string] > this.getUTCDay()) {
-				lapse = this.dow[string] - this.getUTCDay();
+			if (this.DOW[string] > this['get' + USEUTC + 'Day']()) {
+				lapse = this.DOW[string] - this['get' + USEUTC + 'Day']();
 			}
 			else{
-				lapse = 7 + this.dow[string] - this.getUTCDay();
+				lapse = 7 + this.DOW[string] - this['get' + USEUTC + 'Day']();
 			}
 			if (lapse === 0) {
 				lapse = 7;
@@ -124,13 +197,13 @@ function EDate(date) {
 	objDate.previous = function(string){
 		string = string || 'day';
 		
-		if (this.dow[string] !== undefined) {
+		if (this.DOW[string] !== undefined) {
 			var lapse = 0;
-			if (this.dow[string] < this.getUTCDay()) {
-				lapse = this.getUTCDay() - this.dow[string];
+			if (this.DOW[string] < this['get' + USEUTC + 'Day']()) {
+				lapse = this['get' + USEUTC + 'Day']() - this.DOW[string];
 			}
 			else{
-				lapse = 7 + this.getUTCDay() - this.dow[string];
+				lapse = 7 + this['get' + USEUTC + 'Day']() - this.DOW[string];
 			}
 			if (lapse === 0) {
 				lapse = 7;
@@ -142,11 +215,89 @@ function EDate(date) {
 		}
 	}
 	
+	objDate.midnight = function(string) {
+		this['set' + USEUTC + 'Hours'](0, 0, 0, 0);
+		return this;
+	}
+	
+	objDate.noon = function() {
+		this['set' + USEUTC + 'Hours'](12, 0, 0, 0);
+		return this;
+	}
+	
+	objDate.today = function() {
+		var d = new EDate();
+		d.midnight();
+		return d;
+	}
+	
+	objDate.getDayName = function(number) {
+		return this.days_of_week[this.locale][number];
+	}
+
+	objDate.getMonthName = function(number) {
+		return this.months_of_year[this.locale][number];
+	}
+	
+	objDate.getDayNumber = function(name) {
+		var name = new String(name);
+		name = name.toLowerCase();
+		
+		for (i in this.days_of_week){
+			if (this.days_of_week[i] == name){
+				return i;
+			}
+		}
+		return false;
+	}
+
+	objDate.getMonthNumber = function(name) {
+		var name = new String(name);
+		name = name.toLowerCase();
+		
+		for (i in this.months_of_year){
+			if (this.months_of_year[i] == name){
+				return i;
+			}
+		}
+		return false;
+	}
+	
+	objDate.getDaysInMonth = function() {
+		var d = new EDate();
+		d['set' + USEUTC + 'Month'](parseInt(this['get' + USEUTC + 'Month']()) + 1, 1);
+		d.previous('day');
+		return d['get' + USEUTC + 'Date']();
+	}
+	
+	objDate.cmp = function(comparation_date) {
+		var one = this.getTime();
+		var two = comparation_date.getTime();
+		if (one === two) {
+			return 0;
+		}
+		else if(one > two){
+			return 1;
+		}
+		else {
+			return -1;
+		}
+	}
+	
+	objDate.equals = function(comparation_date) {
+		if (this.cmp(comparation_date) === 0){
+			return true;
+		}
+		else{
+			return false;
+		}
+	}
+	
 	objDate.last = function(string) {
 		this.previous(string);
 	}
 	
-	objDate.dow = {
+	objDate.DOW = {
 		sunday : 0,
 		monday : 1,
 		tuesday: 2,
@@ -166,7 +317,7 @@ function EDate(date) {
 		en:['january','february','march','april','may','june','july','august','september','october','november','december'],
 	};
 	
-	objDate.locale = 'es';
+	objDate.locale = 'en';
 	
 	objDate.getLocale = function(){
 		return this.locale;
@@ -177,6 +328,8 @@ function EDate(date) {
 	}
 	
 	objDate.isLeapYear = function(year) {
+		year = year || this['get' + USEUTC + 'FullYear']();
+		
 		if ( year % 4 === 0){
 			if (year % 100 === 0) {
 				if ( year % 400 === 0) {
@@ -197,14 +350,14 @@ function EDate(date) {
 	
 	objDate.format = function(format){
 		var substitutions = {
-			d: this.getUTCDate(),
-			m: this.getUTCMonth(),
-			Y: this.getUTCFullYear(),
-			h: this.getUTCHours(),
-			i: this.getUTCMinutes(),
-			s: this.getUTCSeconds(),
-			D: this.days_of_week[this.locale][this.getUTCDay()],
-			M: this.months_of_year[this.locale][this.getUTCMonth()],
+			d: this['get' + USEUTC + 'Date'](),
+			m: this['get' + USEUTC + 'Month'](),
+			Y: this['get' + USEUTC + 'FullYear'](),
+			h: this['get' + USEUTC + 'Hours'](),
+			i: this['get' + USEUTC + 'Minutes'](),
+			s: this['get' + USEUTC + 'Seconds'](),
+			D: this.days_of_week[this.locale][this['get' + USEUTC + 'Day']()],
+			M: this.months_of_year[this.locale][this['get' + USEUTC + 'Month']()],
 		},
 			result = new String(),
 			i = 0;
@@ -229,6 +382,29 @@ function EDate(date) {
 			}
 		}
 		return result;
+	}
+	
+	objDate.aproxgap = function(comparation_date) {
+		var time1 = this.getTime();
+		var time2 = comparation_date.getTime();
+		
+		var gap = Math.abs(time2 - time1);
+		
+		var data = {};
+		data['years'] = gap  / (1000 * 60 * 60 * 24 * 365);
+		data['months'] = data['years'] * 12;
+		data['weeks'] = data['years'] * 52;
+		data['days'] = gap  / (1000 * 60 * 60 * 24);
+		data['hours'] = gap  / (1000 * 60 * 60);
+		data['minutes'] = gap  / (1000 * 60);
+		data['seconds'] = gap  / (1000);
+		data['milliseconds'] = gap;
+		
+		return data;
+	}
+	
+	objDate.timestamp = function(){
+		return this.getTime() / 1000;
 	}
 	
 	return objDate;
