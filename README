@@ -1,3 +1,3 @@
-EDate significa Extended Date, es un wrapper del objeto Date de JavaScript.
+EDate stands for Extended Date, it is a wrapper for Date Javascript built-in object.
 
-Cuando se construye el objeto EDate regresa un objeto Date pero con más funciones en su prototipo, la primer intención es que contenga más funcionalidades como las que aporta PHP.
+When EDate is created it returns a Date object with more function on its prototype. Those functions are similar to PHP.
