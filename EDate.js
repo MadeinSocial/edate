@@ -75,6 +75,17 @@ function EDate(date, UTC_by_default) {
 			}
 		},
 		{
+			'pattern': /^\d{4}-(0[1-9]|1[0-2])-([0-2][0-9]|3[0-1])\s([0-1][0-9]|2[0-3]):[0-5][0-9]:[0-5][0-9]$/i,
+			'func' : function(date) {
+				var d = new EDate('',UTC_by_default);
+				d['set' + USEUTC + 'Date'](date.substring(8,10));
+				d['set' + USEUTC + 'Month'](parseInt(date.substring(5,7)) - 1);
+				d['set' + USEUTC + 'FullYear'](date.substring(0,4));
+				d.midnight();
+				return d;
+			}
+		},
+		{
 			'pattern': /yesterday/i,
 			'func': function(){
 				var d = new EDate('',UTC_by_default);
