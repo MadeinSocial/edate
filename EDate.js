@@ -34,7 +34,26 @@ function EDate(date, UTC_by_default) {
 	var objDate = new Date();
 	var mapper_constructor = [
 		{
-			'pattern': /^[0-2][0-9]|3[0-1]-0[1-9]|1[0-2]-\d{4}$/i,
+			pattern: /^$/i,
+			func: function() {
+				return objDate;
+			}
+		},
+		{
+			pattern : /^([0-2][0-9]|3[0-1])-(0[1-9]|1[0-2])-\d{4}\s([0-1][0-9]|2[0-3]):[0-5][0-9]:[0-5][0-9]$/i,
+			func : function(date) {
+				var d = new EDate('', UTC_by_default);
+				d['set' + USEUTC + 'Date'](date.substring(0, 2));
+				d['set' + USEUTC + 'Month']
+						(parseInt(date.substring(3, 5)) - 1);
+				d['set' + USEUTC + 'FullYear'](date.substring(6, 10));
+				d['set' + USEUTC + 'Hours'](date.substring(11, 13), date
+						.substring(14, 16), date.substring(17, 19), 0);
+				return d;
+			}
+		},
+		{
+			'pattern': /^([0-2][0-9]|3[0-1])-(0[1-9]|1[0-2])-\d{4}$/i,
 			'func' : function(date) {
 				var d = new EDate('',UTC_by_default);
 				d['set' + USEUTC + 'Date'](date.substring(0,2));
@@ -45,18 +64,20 @@ function EDate(date, UTC_by_default) {
 			}
 		},
 		{
-			pattern: /^[0-2][0-9]|3[0-1]-0[1-9]|1[0-2]-\d{4} [0-1][0-9]|2[0-3]:[0-5][0-9]:[0-5][0-9]$/i,
-			func: function(date) {
-				var d = new EDate(date.substring(0,10), UTC_by_default);
-				console.debug(d);
-				d['set' + USEUTC + 'Hours'](date.substring(11,13),date.substring(14,16),date.substring(17,19),0);
+			'pattern': /^\d{4}-(0[1-9]|1[0-2])-([0-2][0-9]|3[0-1])$/i,
+			'func' : function(date) {
+				var d = new EDate('',UTC_by_default);
+				d['set' + USEUTC + 'Date'](date.substring(8,10));
+				d['set' + USEUTC + 'Month'](parseInt(date.substring(5,7)) - 1);
+				d['set' + USEUTC + 'FullYear'](date.substring(0,4));
+				d.midnight();
 				return d;
 			}
 		},
 		{
 			'pattern': /yesterday/i,
 			'func': function(){
-				var d = new EDate();
+				var d = new EDate('',UTC_by_default);
 				d.addTime('-1 day');
 				return d;
 			}
@@ -64,7 +85,7 @@ function EDate(date, UTC_by_default) {
 		{
 			'pattern': /tomorrow/i,
 			'func': function(){
-				var d = new EDate();
+				var d = new EDate('',UTC_by_default);
 				d.addTime('+1 day');
 				return d;
 			}
@@ -72,7 +93,7 @@ function EDate(date, UTC_by_default) {
 		{
 			'pattern': /today/i,
 			'func': function(){
-				var d = new EDate();
+				var d = new EDate('',UTC_by_default);
 				d.midnight();
 				return d;
 			}
@@ -81,35 +102,35 @@ function EDate(date, UTC_by_default) {
 	
 	var mapper_modifiers = [
 		{
-			pattern: /midnight/i,
+			pattern: /midnight/ig,
 			func: function(objDate) {
 				objDate.midnight();
 				return objDate;
 			}
 		},
 		{
-			pattern: /noon/i,
+			pattern: /noon/ig,
 			func: function(objDate) {
 				objDate.noon();
 				return objDate;
 			}
 		},
 		{
-			pattern: / (0?[1-9]|1[0-2]) ?am/i,
+			pattern: / (0?[1-9]|1[0-2]) ?am/ig,
 			func: function(objDate, matches) {
 				objDate['set' + USEUTC + 'Hours'](matches[1],0,0,0);
 				return objDate;
 			}
 		},
 		{
-			pattern: / (0?[1-9]|1[0-2]) ?pm/i,
+			pattern: / (0?[1-9]|1[0-2]) ?pm/ig,
 			func: function(objDate, matches) {
 				objDate.setUTCHours(12 + parseInt(matches[1]) ,0,0,0);
 				return objDate;
 			}
 		},
 		{
-			pattern: / ([0-1]?[1-9]|2[0-3]) ?hrs/i,
+			pattern: / ([0-1]?[1-9]|2[0-3]) ?hrs/ig,
 			func: function(objDate, matches) {
 				objDate.setUTCHours(parseInt(matches[1]) ,0,0,0);
 				return objDate;
@@ -176,7 +197,7 @@ function EDate(date, UTC_by_default) {
 				this['set' + USEUTC + 'FullYear'](this['get' + USEUTC + 'FullYear']() + (time * 1));
 				break;
 		}
-		return true;
+		return this;
 	};
 	
 	objDate.next = function(string){
@@ -356,7 +377,7 @@ function EDate(date, UTC_by_default) {
 	objDate.format = function(format){
 		var substitutions = {
 			d: this['get' + USEUTC + 'Date'](),
-			m: this['get' + USEUTC + 'Month'](),
+			m: parseInt(this['get' + USEUTC + 'Month']()) + 1,
 			Y: this['get' + USEUTC + 'FullYear'](),
 			h: this['get' + USEUTC + 'Hours'](),
 			i: this['get' + USEUTC + 'Minutes'](),
@@ -389,6 +410,10 @@ function EDate(date, UTC_by_default) {
 		return result;
 	}
 	
+	objDate.formatISO8601 = function() {
+		return this.format('Y-m-dTh:i:sZ');
+	}
+	
 	objDate.aproxgap = function(comparation_date) {
 		var time1 = this.getTime();
 		var time2 = comparation_date.getTime();
@@ -410,6 +435,18 @@ function EDate(date, UTC_by_default) {
 	
 	objDate.timestamp = function(){
 		return this.getTime() / 1000;
+	}
+	
+	objDate.localToUTC = function() {
+		var edate = new EDate('',true);
+		edate.setTime(this.getTime());
+		return edate;
+	}
+	
+	objDate.UTCtoLocal = function() {
+		var edate = new EDate();
+		edate.setTime(this.getTime());
+		return edate;
 	}
 	
 	return objDate;
