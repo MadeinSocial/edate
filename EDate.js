@@ -53,8 +53,8 @@ function EDate(date, UTC_by_default) {
 			}
 		},
 		{
-			'pattern': /^([0-2][0-9]|3[0-1])-(0[1-9]|1[0-2])-\d{4}$/i,
-			'func' : function(date) {
+			pattern: /^([0-2][0-9]|3[0-1])-(0[1-9]|1[0-2])-\d{4}$/i,
+			func : function(date) {
 				var d = new EDate('',UTC_by_default);
 				d['set' + USEUTC + 'Date'](date.substring(0,2));
 				d['set' + USEUTC + 'Month'](parseInt(date.substring(3,5)) - 1);
@@ -64,8 +64,8 @@ function EDate(date, UTC_by_default) {
 			}
 		},
 		{
-			'pattern': /^\d{4}-(0[1-9]|1[0-2])-([0-2][0-9]|3[0-1])$/i,
-			'func' : function(date) {
+			pattern: /^\d{4}-(0[1-9]|1[0-2])-([0-2][0-9]|3[0-1])$/i,
+			func : function(date) {
 				var d = new EDate('',UTC_by_default);
 				d['set' + USEUTC + 'Date'](date.substring(8,10));
 				d['set' + USEUTC + 'Month'](parseInt(date.substring(5,7)) - 1);
@@ -75,35 +75,36 @@ function EDate(date, UTC_by_default) {
 			}
 		},
 		{
-			'pattern': /^\d{4}-(0[1-9]|1[0-2])-([0-2][0-9]|3[0-1])\s([0-1][0-9]|2[0-3]):[0-5][0-9]:[0-5][0-9]$/i,
-			'func' : function(date) {
+			pattern: /^\d{4}-(0[1-9]|1[0-2])-([0-2][0-9]|3[0-1])\s([0-1][0-9]|2[0-3]):[0-5][0-9]:[0-5][0-9]$/i,
+			func : function(date) {
 				var d = new EDate('',UTC_by_default);
 				d['set' + USEUTC + 'Date'](date.substring(8,10));
 				d['set' + USEUTC + 'Month'](parseInt(date.substring(5,7)) - 1);
 				d['set' + USEUTC + 'FullYear'](date.substring(0,4));
-				d.midnight();
+				d['set' + USEUTC + 'Hours'](date.substring(11, 13), date
+						.substring(14, 16), date.substring(17, 19), 0);
 				return d;
 			}
 		},
 		{
-			'pattern': /yesterday/i,
-			'func': function(){
+			pattern: /yesterday/i,
+			func: function(){
 				var d = new EDate('',UTC_by_default);
 				d.addTime('-1 day');
 				return d;
 			}
 		},
 		{
-			'pattern': /tomorrow/i,
-			'func': function(){
+			pattern: /tomorrow/i,
+			func: function(){
 				var d = new EDate('',UTC_by_default);
 				d.addTime('+1 day');
 				return d;
 			}
 		},
 		{
-			'pattern': /today/i,
-			'func': function(){
+			pattern: /today/i,
+			func: function(){
 				var d = new EDate('',UTC_by_default);
 				d.midnight();
 				return d;
@@ -150,17 +151,21 @@ function EDate(date, UTC_by_default) {
 	];
 	
 	for(i in mapper_constructor){
-		exp = new RegExp(mapper_constructor[i].pattern);
-		if (exp.exec(date) !== null) {
-			objDate = mapper_constructor[i].func(date);
-			for ( j in mapper_modifiers) {
-				exp2 = new RegExp(mapper_modifiers[j].pattern);
-				matches = exp2.exec(date);
-				if (matches !== null) {
-					objDate = mapper_modifiers[j].func(objDate,matches);
+		if (mapper_constructor.hasOwnProperty(i)) {
+			exp = new RegExp(mapper_constructor[i].pattern);
+			if (exp.exec(date) !== null) {
+				objDate = mapper_constructor[i].func(date);
+				for ( j in mapper_modifiers) {
+					if (mapper_modifiers.hasOwnProperty(j)) {
+						exp2 = new RegExp(mapper_modifiers[j].pattern);
+						matches = exp2.exec(date);
+						if (matches !== null) {
+							objDate = mapper_modifiers[j].func(objDate,matches);
+						}
+					}
 				}
+				break;
 			}
-			break;
 		}
 	}
 	/*
